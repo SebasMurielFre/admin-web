@@ -674,4 +674,55 @@ function notifyInternalAppointmentModified($appointment_id, $modified_by_user_id
         return false;
     }
 }
+// Función para verificar inactividad y cerrar sesión
+function checkInactivity() {
+    $inactivity_timeout = 1800; // 30 minutos en segundos
+    
+    if (isset($_SESSION['LAST_ACTIVITY']) {
+        $session_lifetime = time() - $_SESSION['LAST_ACTIVITY'];
+        
+        if ($session_lifetime > $inactivity_timeout) {
+            // Registrar el cierre de sesión por inactividad
+            if (isset($_SESSION['admin_user_id'])) {
+                logAction(null, 'logout', 'Sesión cerrada por inactividad');
+            }
+            
+            // Destruir la sesión y redirigir
+            session_unset();
+            session_destroy();
+            header('Location: login.php?reason=inactivity');
+            exit();
+        }
+    }
+    
+    // Actualizar marca de tiempo de última actividad
+    $_SESSION['LAST_ACTIVITY'] = time();
+    
+    // Para prevenir sesiones demasiado largas (opcional)
+    if (!isset($_SESSION['CREATED'])) {
+        $_SESSION['CREATED'] = time();
+    } elseif (time() - $_SESSION['CREATED'] > $inactivity_timeout * 2) {
+        // Sesión empezó hace más de 1 hora (2x tiempo de inactividad)
+        session_regenerate_id(true);    // Cambiar ID de sesión
+        $_SESSION['CREATED'] = time(); // Actualizar tiempo de creación
+    }
+}
+
+// Función para requerir autenticación con verificación de inactividad
+function requireAuth() {
+    checkInactivity();
+    if (!isAuthenticated()) {
+        header('Location: login.php');
+        exit();
+    }
+}
+
+// Función para requerir permisos de administrador con verificación de inactividad
+function requireAdmin() {
+    requireAuth();
+    if (!isAdmin()) {
+        header('Location: dashboard.php');
+        exit();
+    }
+}
 ?>
